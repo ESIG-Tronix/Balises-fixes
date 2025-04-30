@@ -2,7 +2,7 @@ import cv2
 import glob
 
 # Utiliser glob pour trouver toutes les images dans le répertoire
-image_files = glob.glob('Balises Fixes/images/*.png') + glob.glob('Balises Fixes/images/*.jpg')
+image_files = glob.glob('Balises Fixes/images/*.png')
 
 if not image_files:
     print("Aucune image trouvée dans le répertoire spécifié.")
