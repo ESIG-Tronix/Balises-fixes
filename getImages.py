@@ -1,6 +1,6 @@
 import cv2
 
-cap = cv2.VideoCapture(0) #--> For external camera
+cap = cv2.VideoCapture(0) #---> For external camera
 num = 0
 while cap.isOpened():
 
