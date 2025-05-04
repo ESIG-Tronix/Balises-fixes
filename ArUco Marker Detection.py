@@ -5,9 +5,9 @@ import cv2
 import numpy as np
 
 # Load the camera calibration data
-with open('Balises Fixes/cameraMatrix.pkl', 'rb') as f:
+with open('Balises Fixes/Resultat Calibration/cameraMatrix.pkl', 'rb') as f:
     cameraMatrix = pickle.load(f)
-with open('Balises Fixes/dist.pkl', 'rb') as f:
+with open('Balises Fixes/Resultat Calibration/dist.pkl', 'rb') as f:
     dist = pickle.load(f)
 
 # Choose the correct camera index (0 for external, 1 for built-in)
