@@ -7,6 +7,7 @@ import pickle
 from imutils.video import VideoStream
 import cv2
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 # ------------------------------------------------
 # Load the camera calibration data
@@ -173,7 +174,12 @@ while True:
                     #   --> Y = -1: 1 meter above the table (negative Y).
                     #   --> Z = 0: No vertical displacement.
 
-                marker_global_coords = tvec + camera_position
+                # Define camera rotation if it's tilted down by 45° (change as needed)
+                camera_euler = np.deg2rad([45, 0, 0])  # pitch, yaw, roll
+                camera_rotation = R.from_euler('xyz', camera_euler).as_matrix()
+
+                marker_global_coords = camera_rotation @ tvec + camera_position
+                # marker_global_coords = tvec + camera_position
                 marker_global_x, marker_global_y, marker_global_z = marker_global_coords
 
                 # ---------------------------------------------------

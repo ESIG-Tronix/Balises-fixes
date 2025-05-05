@@ -6,6 +6,7 @@
 import cv2
 import numpy as np
 import pickle
+from scipy.spatial.transform import Rotation as R
 
 # ------------------------------------------------
 # Load the camera calibration data
@@ -79,8 +80,11 @@ while True:
             # Calculate the distance (for reference purposes)
             distance = np.sqrt(tvec[0]**2 + tvec[1]**2 + tvec[2]**2)
 
+            camera_euler = np.deg2rad([45, 0, 0])  # pitch, yaw, roll
+            camera_rotation = R.from_euler('xyz', camera_euler).as_matrix()
+
             # Get the global coordinates of the marker
-            detected_coords = tvec + np.array([1.5, -1, 0])  # Camera position offset
+            detected_coords = camera_rotation @ tvec + np.array([1.5, -1, 0])  # Camera position offset
             print(f"Marker {marker_id} detected at coordinates: {detected_coords}")
 
             # Check if the detected coordinates are within the error margin of the reference coordinates
