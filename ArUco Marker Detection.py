@@ -1,32 +1,57 @@
+
+# ------------------------------------------------
 # import the necessary packages
+# ------------------------------------------------
+
 import pickle
 from imutils.video import VideoStream
 import cv2
 import numpy as np
 
+# ------------------------------------------------
 # Load the camera calibration data
-with open('Balises Fixes/Resultat Calibration/cameraMatrix.pkl', 'rb') as f:
-    cameraMatrix = pickle.load(f)
-with open('Balises Fixes/Resultat Calibration/dist.pkl', 'rb') as f:
-    dist = pickle.load(f)
+# ------------------------------------------------
 
-# Choose the correct camera index (0 for external, 1 for built-in)
-#cap = cv2.VideoCapture(1) #--> For built-in camera
-cap = cv2.VideoCapture(0) #--> For external camera
+try:
+    with open('Balises Fixes/Resultat Calibration/cameraMatrix.pkl', 'rb') as f:
+        cameraMatrix = pickle.load(f)
+except FileNotFoundError:
+    print("Error: cameraMatrix.pkl not found. Check the file path.")
+    exit()
+try:
+    with open('Balises Fixes/Resultat Calibration/dist.pkl', 'rb') as f:
+        dist = pickle.load(f)
+except FileNotFoundError:
+    print("Error: dist.pkl not found. Check the file path.")
+    exit()
 
+# ------------------------------------------------
+# Choose the correct camera index (depending on your system)
+# ------------------------------------------------
+
+cap = cv2.VideoCapture(0) #--> 0 for external camera, 1 for built-in camera
+
+# -------------------------------------------------
 # Check if the webcam is opened successfully
+# -------------------------------------------------
+
 if not cap.isOpened():
     print("Error: Webcam not detected or cannot be opened.")
     exit()
 else:
     print("Webcam activated successfully.")
 
-# Define the real-world size of the ArUco marker (e.g., 5 cm side length)
-marker_length = 0.037  # in meters (5 cm)
+# -------------------------------------------------
+# Define the real-world size of the ArUco marker (5cm in our case)
+# -------------------------------------------------
 
-# Load the ArUco dictionary : 
-# Test with a specific dictionary : aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-# Or can choose any of the following dictionaries : 
+marker_length = 0.037  #--> in meters
+
+# -------------------------------------------------
+# Load the ArUco dictionary for marker detection:
+# Choose from the predefined dictionaries available: 
+# --------------------------------------------------
+
 aruco_dict = {
 	"DICT_4X4_50": cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50),
 	"DICT_4X4_100": cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100),
@@ -51,68 +76,133 @@ aruco_dict = {
 	"DICT_APRILTAG_36h11": cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)
 }
 
-# Set detection parameters(in default) which can adjust these parameters for better detection
+# -------------------------------------------------
+# Set detection parameters(default parameters can be adjusted for better detection)
+# -------------------------------------------------
 parameters = cv2.aruco.DetectorParameters()
 
+# --------------------------------------------------
 # Detect Markers in Each Frame
+# --------------------------------------------------
+
 while True:
     ret, frame = cap.read()     #--> Read the frame from the webcam
     if not ret:
         break
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)      #--> Convert to grayscale
 
-    # initialize lists to store detected corners and IDs
+    # Initialize lists to store detected corners and IDs
     all_corners = []
     all_ids = []
 
     for dict_name, dictionary in aruco_dict.items():
-    # Detect markers for the current dictionary
+
+        # Detect markers for the current dictionary
         corners, ids, rejected = cv2.aruco.detectMarkers(gray, dictionary, parameters=parameters)
-    # If markers are detected, add them to the combined list
+
+        # ---------------------------------------------------
+        # If markers are detected, add them to the combined list
+        # ---------------------------------------------------
         if ids is not None:
             all_corners.extend(corners)
             all_ids.extend(ids)
             rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners, marker_length, cameraMatrix, dist)
 
-    #if len(all_ids) > 0:
-    # Convert IDs to a single array (optional)
-    #    all_ids = np.array(all_ids).flatten()
-    # Draw all detected markers
-    #cv2.aruco.drawDetectedMarkers(frame, all_corners, all_ids)
-
-                # Loop through each detected marker within this dictionary
+            # ----------------------------------------------------
+            # Loop through each detected marker within this dictionary
+            # ----------------------------------------------------
             for i in range(len(ids)):
+
+                # -------------------------------------------------
                 # Draw the marker and its axis
-                cv2.aruco.drawDetectedMarkers(frame, corners)
+
+                # The following block of code manually draws the ArUco marker's bounding box and ID on the frame.
+                # However, we can use this much simpler command to do the same thing "cv2.aruco.drawDetectedMarkers(frame, corners)
+                # -------------------------------------------------
+
+                # Loop over the detected ArUco corners
+                for (markerCorner, markerID) in zip(corners, ids):
+                    # Extract the marker corners (which are always returned in
+                    # top-left, top-right, bottom-right, and bottom-left order)
+                    markerCorner = markerCorner[0]  # Get the 4 points for the current marker
+
+                    # Now unpack the 4 points into (topLeft, topRight, bottomRight, bottomLeft)
+                    (topLeft, topRight, bottomRight, bottomLeft) = markerCorner
+
+                    # Convert each of the (x, y)-coordinate pairs to integers
+                    topRight = (int(topRight[0]), int(topRight[1]))
+                    bottomRight = (int(bottomRight[0]), int(bottomRight[1]))
+                    bottomLeft = (int(bottomLeft[0]), int(bottomLeft[1]))
+                    topLeft = (int(topLeft[0]), int(topLeft[1]))
+
+                    # Draw the bounding box of the ArUco detection
+                    cv2.line(frame, topLeft, topRight, (0, 255, 0), 2)
+                    cv2.line(frame, topRight, bottomRight, (0, 255, 0), 2)
+                    cv2.line(frame, bottomRight, bottomLeft, (0, 255, 0), 2)
+                    cv2.line(frame, bottomLeft, topLeft, (0, 255, 0), 2)
+
+                    # Draw the ArUco marker ID on the image
+                    cv2.putText(frame, str(markerID),
+                                (topLeft[0], topLeft[1] - 15), cv2.FONT_HERSHEY_SIMPLEX,
+                                0.5, (0, 255, 0), 2)
+                    
+                # Draw the 3D axis for each marker
                 cv2.drawFrameAxes(frame, cameraMatrix, dist, rvecs[i], tvecs[i], 0.1)
 
+                # ---------------------------------------------------
                 # Calculate the distance to the marker
-                tvec = tvecs[i][0]
+                # ---------------------------------------------------
+
+                tvec = tvecs[i][0] 
                 distance = np.sqrt(tvec[0]**2 + tvec[1]**2 + tvec[2]**2)
 
+                # ---------------------------------------------------
                 # Display the marker's ID and distance on separate lines
+                # ---------------------------------------------------
+
                 text_id = f"Dict: {dict_name}, ID: {ids[i][0]}"
                 text_distance = f"Distance: {distance:.2f} m"
                 cv2.putText(frame, text_id, (10, 30 + i * 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
                 cv2.putText(frame, text_distance, (10, 60 + i * 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-                # Print the information in the console
-                print(f"Dictionary: {dict_name}")
-                print(f"Marker ID: {ids[i][0]}")
-                print(f"Translation Vector (tvec): {tvec}")
-                print(f"Distance: {distance:.2f} m\n")
+                # ---------------------------------------------------
+                # Calculate the global coordinates
+                # ---------------------------------------------------
+                camera_position = np.array([1.5, -1, 0])    # --> Camera position in world frame (x=1.5, y=0, z=1) :
+                    #   --> X = 1.5: Horizontal displacement.
+                    #   --> Y = -1: 1 meter above the table (negative Y).
+                    #   --> Z = 0: No vertical displacement.
 
+                marker_global_coords = tvec + camera_position
+                marker_global_x, marker_global_y, marker_global_z = marker_global_coords
+
+                # ---------------------------------------------------
+                # Print the information in the terminal
+                # ---------------------------------------------------
+                print(f"Dictionary: {dict_name}, Marker ID: {ids[i][0]}")
+                print(f"Translation Vector (tvec): {tvec}")
+                print(f"Distance: {distance:.2f}")
+                print(f"World coordinates: [{marker_global_x:.4f}, {marker_global_y:.4f}, {marker_global_z:.4f}] \n")
+
+    # ---------------------------------------------------
     # If no markers are detected
+    # ---------------------------------------------------
     if len(all_ids) == 0:
         cv2.putText(frame, "No markers detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
-# Show the frame
+    # -------------------------------------------------
+    # Show the frame
+    # -------------------------------------------------
     cv2.imshow('ArUco Detection', frame)
 
+    # --------------------------------------------------
     # Press 'q' to quit
+    # --------------------------------------------------
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# Release everything
+# -------------------------------------------------
+# Release everything and close windows
+# -------------------------------------------------
 cap.release()
 cv2.destroyAllWindows()
